@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>記帳本</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- 引入Chart.js -->
+    <style>
+        /* 頁面設定 */
+        body {
+            font-family: 'Comic Sans MS', sans-serif;
+            background-color: #6391c5; /* 網頁背景顏色 */
+            max-width: 1200px; /* 增加最大寬度以容納兩側欄位 */
+            margin: auto;
+            padding: 30px;
+            box-sizing: border-box;
+            display: flex; /* 使用彈性盒子布局 */
+        }
+
+        /* 標題 */
+        h1 {
+            text-align: center; /* 標題居中 */
+            color: #FFDAB9; /* 標題顏色 */
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+            width: 100%; /* 確保標題佔滿整個寬度 */
+        }
+
+        /* 左側功能區 */
+        .sidebar {
+            position: fixed; /* 固定位置 */
+            left: 30px; /* 距離左側的距離 */
+            top: 120px; /* 鉛直下移，避免遮擋標題 */
+            width: calc(100% * 3 / 8); /* 設定為畫面的 3/8，稍微加寬 */
+            background-color: #e7ca6d; /* 方框顏色 */
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 右側支出紀錄區域 */
+        .record-sidebar {
+            position: fixed; /* 固定位置 */
+            right: 30px; /* 距離右側的距離 */
+            top: 120px; /* 鉛直下移，避免遮擋標題 */
+            width: calc(100% * 3 / 8 - 60px); /* 設定為畫面的 3/8 */
+            background-color: #e7ca6d; /* 方框顏色 */
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+            overflow-y: auto; /* 允許垂直滾動 */
+            max-height: 400px; /* 設定最大高度 */
+        }
+
+        /* 表單內部元件 */
+        form label {
+            font-size: 1.2rem;
+            color: #000000; /* 字體顏色 */
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        form input, form select, form button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #000000; /* 字體顏色 */
+            border-radius: 10px;
+            font-size: 1.1rem;
+            color: #000000; /* 使用者選填選項顏色 */
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        /* 使用者選填選項的字體顏色 */
+        form input::placeholder, form select {
+            color: #000000; /* 使用者選填選項顏色 */
+        }
+
+        /* 表單項目的focus效果 */
+        form input:focus, form select:focus, form button:focus {
+            border-color: #000000; /* 深米色 */
+            box-shadow: 0 0 5px rgba(180, 127, 111, 0.5);
+        }
+
+        /* 按鈕樣式 */
+        form button {
+            background-color: #5686BF; /* 按鈕顏色 */
+            color: white;
+            cursor: pointer;
+            border: none;
+            font-weight: bold;
+        }
+
+        form button:hover {
+            background-color: #b47f6f; /* 按鈕的深米色 hover */
+        }
+
+        /* 記帳紀錄區域 */
+        #records {
+            margin-top: 30px;
+            flex-grow: 1; /* 讓紀錄區域填滿剩餘空間 */
+        }
+
+        .record {
+            background-color: #8bb873; /* 記帳紀錄的背景顏色 */
+            color: #FFF7FF; /* 字體顏色 */
+            border-radius: 12px;
+            border: 1px solid #d4a29c;
+            padding: 15px;
+            margin: 10px 0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 記帳紀錄文字 */
+        .record p {
+            margin: 8px 0;
+            font-size: 1.1rem;
+        }
+
+        .record strong {
+            font-weight: bold;
+        }
+
+        /* 垃圾桶按鈕 */
+        .delete-button {
+            background-color: transparent; /* 背景透明 */
+            border: none; /* 無邊框 */
+            color: #FFF7FF; /* 字體顏色 */
+            cursor: pointer; /* 鼠標變為指針 */
+            font-size: 1.1rem; /* 字體大小 */
+            margin-top: 10px; /* 上邊距 */
+        }
+
+        /* 分辨月份按鈕 */
+        .month-buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .month-button {
+            background-color: #5686BF; /* 按鈕顏色 */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 15px;
+            margin: 0 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .month-button:hover {
+            background-color: #b47f6f; /* 按鈕的深米色 hover */
+        }
+
+        /* 記帳紀錄內部的間隔 */
+        hr {
+            border: 1px solid #b47f6f;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        /* 總支出顯示 */
+        .total-expense {
+            color: 	#FFFFFF; /* 總支出字體顏色 */
+            font-size: 1.5rem;
+            margin-top: 20px;
+            text-align: center; /* 居中顯示 */
+            display: flex; /* 使用flex布局 */
+            justify-content: center; /* 居中對齊 */
+            align-items: center; /* 垂直居中 */
+        }
+
+        /* 圖表按鈕樣式 */
+        .chart-button {
+            background-color: #FFDAB9; /* 圖表按鈕顏色 */
+            color: #003D79; /* 圖表按鈕文字顏色 */
+            border: none;
+            border-radius: 5px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 10px; /* 與總支出之間的間距 */
+        }
+
+        .chart-button:hover {
+            background-color: #b47f6f; /* 圖表按鈕的深米色 hover */
+        }
+
+        /* 圓餅圖畫布樣式 */
+        #chartContainer {
+            display: none; /* 初始隱藏 */
+            margin-top: 20px;
+            text-align: center;
+            position: fixed; /* 固定位置 */
+            right: 30px; /* 距離右側的距離 */
+            bottom: 30px; /* 距離底部的距離 */
+            width: calc(100% * 3 / 8 - 60px); /* 設定為畫面的 3/8 */
+            background-color: #930000; /* 方框顏色 */
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 關閉按鈕樣式 */
+        .close-button {
+            background-color: transparent; /* 背景透明 */
+            border: none; /* 無邊框 */
+            color: white; /* 字體顏色 */
+            font-size: 1.5rem; /* 字體大小 */
+            cursor: pointer; /* 鼠標變為指針 */
+            position: absolute; /* 絕對定位 */
+            top: 10px; /* 距離上邊距 */
+            right: 10px; /* 距離右邊距 */
+        }
+    </style>
+</head>
+<body>
+    <h1>簡單記帳本</h1>
+
+    <div class="sidebar">
+        <h2 style="text-align: center; color: #FFDAB9; margin-bottom: 20px;">支出</h2> <!-- 左側支出欄標題 -->
+        <form id="recordForm">
+            <label for="date">日期：</label>
+            <input type="date" id="date" required>
+
+            <label for="category">類別：</label>
+            <select id="category">
+                <option value="飲食">飲食</option>
+                <option value="交通">交通</option>
+                <option value="娛樂">娛樂</option>
+                <option value="其他">其他</option>
+            </select>
+
+            <label for="amount">金額：</label>
+            <input type="number" id="amount" required>
+
+            <label for="note">備註：</label>
+            <input type="text" id="note" placeholder="請填寫備註">
+
+            <button type="submit">新增記帳</button>
+        </form>
+    </div>
+
+    <div class="record-sidebar">
+        <h2 style="text-align: center; color: 	#FFFFFF; margin-bottom: 20px;">支出紀錄</h2> <!-- 右側支出紀錄標題 -->
+        <!-- 月份按鈕 -->
+        <div class="month-buttons">
+            <button class="month-button" onclick="filterByMonth(1)">一月</button>
+            <button class="month-button" onclick="filterByMonth(2)">二月</button>
+            <button class="month-button" onclick="filterByMonth(3)">三月</button>
+            <button class="month-button" onclick="filterByMonth(4)">四月</button>
+            <button class="month-button" onclick="filterByMonth(5)">五月</button>
+            <button class="month-button" onclick="filterByMonth(6)">六月</button>
+            <button class="month-button" onclick="filterByMonth(7)">七月</button>
+            <button class="month-button" onclick="filterByMonth(8)">八月</button>
+            <button class="month-button" onclick="filterByMonth(9)">九月</button>
+            <button class="month-button" onclick="filterByMonth(10)">十月</button>
+            <button class="month-button" onclick="filterByMonth(11)">十一月</button>
+            <button class="month-button" onclick="filterByMonth(12)">十二月</button>
+        </div>
+         
+        <div id="records"></div> <!-- 記帳紀錄區域 -->
+        <!-- 總支出顯示 -->
+        <div class="total-expense" id="totalExpense">
+            總支出：0
+             </div>
+        <div class="month-buttons">
+            <button class="chart-button" onclick="showChart()">📊 圖表</button> <!-- 圖表按鈕 -->
+        </div>
+    </div>
+
+    <!-- 圓餅圖畫布 -->
+    <div id="chartContainer">
+        <button class="close-button" onclick="closeChart()">✖</button> <!-- 關閉按鈕 -->
+        <canvas id="expenseChart"></canvas>
+    </div>
+
+    <script>
+        const form = document.getElementById("recordForm");
+        const recordsContainer = document.getElementById("records");
+        const totalExpenseDisplay = document.getElementById("totalExpense");
+        let allRecords = []; // 儲存所有紀錄
+
+        // 新增記帳資料
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            const date = document.getElementById("date").value;
+            const category = document.getElementById("category").value;
+            const amount = Number(document.getElementById("amount").value);
+            const note = document.getElementById("note").value;
+
+            // 創建新紀錄物件
+            const newRecord = { date, category, amount, note };
+            allRecords.push(newRecord); // 將新紀錄添加到所有紀錄中
+
+            // 直接在支出紀錄中新增新紀錄
+            const recordElement = document.createElement("div");
+            recordElement.classList.add("record");
+            recordElement.innerHTML = `
+                <p><strong>日期：</strong>${date}</p>
+                <p><strong>類別：</strong>${category}</p>
+                <p><strong>金額：</strong>${amount}</p>
+                <p><strong>備註：</strong>${note}</p>
+                <button class="delete-button" onclick="deleteRecord(this)">🗑️ 刪除</button> <!-- 垃圾桶按鈕 -->
+            `;
+            recordsContainer.appendChild(recordElement); // 新增到紀錄區域
+
+            form.reset(); // 重置表單
+
+            // 更新總支出
+            updateTotalExpense();
+        });
+
+        // 刪除紀錄的函數
+        function deleteRecord(button) {
+            const record = button.parentElement; // 找到包含紀錄的 div
+            recordsContainer.removeChild(record); // 從紀錄區域中刪除
+
+            // 更新總支出
+            updateTotalExpense();
+        }
+
+        // 更新總支出顯示
+        function updateTotalExpense() {
+            const total = allRecords.reduce((sum, record) => sum + record.amount, 0);
+            totalExpenseDisplay.textContent = `總支出：${total}`;
+        }
+
+        // 過濾紀錄的函數
+        function filterByMonth(month) {
+            // 清空現有紀錄
+            recordsContainer.innerHTML = "";
+            let total = 0; // 用於計算當月總金額
+
+            // 過濾紀錄
+            allRecords.forEach(record => {
+                const recordDate = new Date(record.date);
+                if (recordDate.getMonth() + 1 === month) { // JavaScript 中的月份從 0 開始
+                    const recordElement = document.createElement("div");
+                    recordElement.classList.add("record");
+                    recordElement.innerHTML = `
+                        <p><strong>日期：</strong>${record.date}</p>
+                        <p><strong>類別：</strong>${record.category}</p>
+                        <p><strong>金額：</strong>${record.amount}</p>
+                        <p><strong>備註：</strong>${record.note}</p>
+                        <button class="delete-button" onclick="deleteRecord(this)">🗑️ 刪除</button> <!-- 垃圾桶按鈕 -->
+                    `;
+                    recordsContainer.appendChild(recordElement);
+                    total += record.amount; // 累加當月金額
+                }
+            });
+
+            // 更新總支出顯示為當月總金額
+            totalExpenseDisplay.textContent = `總支出：${total}`;
+        }
+
+        // 圖表按鈕的功能
+        function showChart() {
+            const chartContainer = document.getElementById("chartContainer");
+            chartContainer.style.display = "block"; // 顯示圖表容器
+
+            const ctx = document.getElementById("expenseChart").getContext("2d");
+            const monthExpenses = {};
+
+            // 計算當月支出類別
+            allRecords.forEach(record => {
+                const recordDate = new Date(record.date);
+                const month = recordDate.getMonth() + 1; // 獲取月份
+                const category = record.category;
+
+                if (!monthExpenses[category]) {
+                    monthExpenses[category] = 0;
+                }
+                monthExpenses[category] += record.amount;
+            });
+
+            // 準備數據
+            const labels = Object.keys(monthExpenses);
+            const data = Object.values(monthExpenses);
+
+            // 創建圓餅圖
+            const expenseChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '當月支出類別',
+                        data: data,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.2)',
+                            'rgba(54, 162, 235, 0.2)',
+                            'rgba(255, 206, 86, 0.2)',
+                            'rgba(75, 192, 192, 0.2)',
+                            'rgba(153, 102, 255, 0.2)',
+                            'rgba(255, 159, 64, 0.2)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(255, 159, 64, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: '當月支出類別圓餅圖'
+                        }
+                    }
+                }
+            });
+        }
+
+        // 關閉圓餅圖
+        function closeChart() {
+            const chartContainer = document.getElementById("chartContainer");
+            chartContainer.style.display = "none"; // 隱藏圖表容器
+        }
+    </script>
+</body>
+</html>
